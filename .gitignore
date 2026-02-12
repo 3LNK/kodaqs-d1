@@ -1,0 +1,36 @@
+# =============================================================================
+# .gitignore — Kodaqs-d1
+# =============================================================================
+
+# --- R / RStudio / Positron ---
+.Rproj.user/
+.Rhistory
+.Rdata
+.RData
+.httr-oauth
+.Renviron
+*.Rproj
+
+# --- Quarto rendering artifacts ---
+scripts/analysis_script_files/
+scripts/_freeze/
+.quarto/
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editor files ---
+*.swp
+*.swo
+*~
+.vscode/
+
+# --- Rendered HTML output (can be regenerated) ---
+scripts/analysis_script.html
+
+# --- Large or sensitive files (none expected, but just in case) ---
+*.accdb
+*.xlsx
+*.zip

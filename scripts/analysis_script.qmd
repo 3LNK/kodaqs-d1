@@ -1,0 +1,278 @@
+---
+title: "KODAQS Academy Assignment D1: The TidyTuesday Edible Plants Database "
+author:
+  - name: "Ladislav N. Krutisch"
+    orcid: "0009-0000-5050-3608"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+format:
+  html:
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    toc-title: "Contents"
+    embed-resources: true
+    code-fold: true
+    code-tools: true
+    code-summary: "Show code"
+    theme: cosmo
+    fig-width: 10
+    fig-height: 7
+    fig-dpi: 300
+    number-sections: true
+execute:
+  warning: false
+  message: false
+  echo: true
+editor:
+  markdown:
+    wrap: 72
+---
+
+# Preamble {#preamble}
+
+This file has been created for the **KODAQS Academy Course Assignment D1** _Modern Tools & Workflows for Data Quality_. 
+
+This Quarto document presents an exploratory data analysis of the
+**Edible Plants Database (EPD)**, originally compiled as part of the
+[GROW Observatory](https://www.dundee.ac.uk/projects/grow-observatory),
+a European Citizen Science project on growing food, soil moisture
+sensing, and land monitoring. The database contains information on 140
+edible plant species, including their ideal growing conditions (sunlight,
+water, soil, pH, temperature), cultivation classification, time to
+germination and harvest, and nutritional information.
+
+The dataset was curated for the
+[TidyTuesday](https://github.com/rfordatascience/tidytuesday) project
+(2026-02-03) by
+[Nicola Rennie](https://github.com/nrennie) and is available 
+[here](<https://github.com/rfordatascience/tidytuesday/tree/main/data/2026/2026-02-03>).
+
+The original source is the [Edible Plant Database](<https://discovery.dundee.ac.uk/en/datasets/edible-plant-database/>) hosted by the University of Dundee.
+
+## Goals
+
+This analysis focuses on basic descriptive statistics and addresses two questions proposed on the TidyTuesday GitHub:
+
+1.  **Q1:** Do plants that require more sunlight also require higher temperatures?
+2.  **Q2:** What cultivation classes require the most water?
+
+All R code is sourced from individual scripts in the `src/` folder.
+Outputs (tables and plots) are saved to the `results/` folder. 
+The cleaned dataset is exported to `processed_data/`.
+
+## Data Source & Licensing
+
+The Edible Plants Database is shared via the TidyTuesday project. 
+The TidyTuesday data is made available under a
+[CC0 1.0 Universal (Public Domain)](https://creativecommons.org/publicdomain/zero/1.0/)
+dedication, allowing full public sharing and reuse. 
+The data contains no personal or sensitive information, 
+as it describes botanical and agricultural properties of edible plant species only.
+
+This analysis repository is licensed under
+[CC-BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+
+------------------------------------------------------------------------
+
+# Computational Environment Setup {#setup}
+
+The setup chunk loads all required packages, sets global options, and
+defines the colour palettes and `ggplot2` theme used throughout this
+analysis. Colour palettes are taken from the `khroma` package.
+Packages are managed via `pacman` for automatic installation/loading.
+
+```{r}
+#| label: 00_setup
+#| echo: true
+#| output: false
+
+# Anchor project root before sourcing any scripts
+if (!require("here", quietly = TRUE)) install.packages("here")
+library(here)
+here::i_am("scripts/analysis_script.qmd")
+
+source(here::here("src", "00_setup.R"))
+```
+
+**Packages used:**
+
+| Package        | Purpose                                          |
+|:---------------|:-------------------------------------------------|
+| `here`         | Portable file path management                    |
+| `pacman`       | Automated package installation and loading       |
+| `tidyverse`    | Data wrangling and visualisation (core suite)    |
+| `scales`       | Axis formatting for plots                        |
+| `modelsummary` | Publication-quality summary & descriptive tables |
+| `tinytable`    | Lightweight HTML/LaTeX table rendering           |
+| `khroma`       | Colourblind-friendly colour palettes             |
+| `ggcorrplot`   | Correlation matrix visualisation                 |
+| `knitr`        | Chunk options and table rendering in Quarto      |
+| `sessioninfo`  | Detailed session/package version reporting       |
+
+: {tbl-colwidths="[25,75]"}
+
+------------------------------------------------------------------------
+
+# Data Import {#data-import}
+
+The raw data file `edible_plants.csv` is expected in the `data/` folder.
+It was downloaded from the TidyTuesday GitHub repository
+([direct CSV link](https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2026/2026-02-03/edible_plants.csv)).
+If the file is not found locally, the script attempts to download it directly.
+
+```{r}
+#| label: 01_data
+#| output: false
+
+source(here::here("src", "01_data.R"))
+```
+
+------------------------------------------------------------------------
+
+# Variable Codebook {#codebook}
+
+The table below documents all 20 variables in the Edible Plants Database. 
+Variable names, types, and descriptions are drawn from the official TidyTuesday data dictionary.
+
+```{r}
+#| label: 02_codebook
+
+source(here::here("src", "02_codebook.R"))
+
+knitr::kable(variable_codebook,
+  col.names = c("Variable", "Class", "Description"),
+  caption = "Variable Codebook: Edible Plants Database")
+```
+
+------------------------------------------------------------------------
+
+# Data Cleaning {#cleaning}
+
+Several variables require cleaning before analysis. 
+The raw data contains inconsistent capitalisation (e.g. "high" vs "High", "partial shade" vs "Partial shade"), 
+a likely typo in `temperature_class` ("Very hard" vs "Very hardy"), 
+and a duplicate cultivation label ("Brassicas" vs "Brassica").
+Character-encoded temperature ranges in `temperature_growing` and `temperature_germination` are parsed into numeric lower/upper bounds.
+Ordinal factor levels are assigned to `sunlight`, `water`, `nutrients`, 
+and `temperature_class` to enable meaningful ordering in plots and statistical summaries.
+
+The cleaned dataset is exported to `processed_data/edible_plants_cleaned.csv`.
+
+```{r}
+#| label: 03_cleaning
+#| output: false
+
+source(here::here("src", "03_cleaning.R"))
+```
+
+Reusable helper functions for saving tables (HTML) and plots (SVG) to the `results/` folder.
+
+```{r}
+#| label: 04_helpers
+#| output: false
+
+source(here::here("src", "04_helpers.R"))
+```
+
+------------------------------------------------------------------------
+
+# Descriptive Statistics: Univariate {#univariate}
+
+This section presents univariate summaries for all key variables:
+a data quality overview (missingness, variable types, unique values),
+frequency distributions for categorical variables,
+detailed summary statistics for numeric variables
+(including IQR, skewness, kurtosis, and Shapiro-Wilk normality tests),
+and bar/histogram plots.
+
+All tables are rendered via `modelsummary` and `tinytable` for
+publication-quality HTML output.
+
+```{r}
+#| label: 05_descriptive-univariate
+#| results: asis
+
+source(here::here("src", "05_descriptive-univariate.R"))
+```
+
+------------------------------------------------------------------------
+
+# Descriptive Statistics: Bivariate {#bivariate}
+
+Bivariate summaries explore relationships between pairs of variables,
+including cross-tabulations of categorical variables with association
+tests (Fisher's exact test, Cramér's V, Kendall's τ-b for ordinal
+variables), and Spearman correlation analysis of numeric variables.
+
+```{r}
+#| label: 06_descriptive-bivariate
+#| results: asis
+
+source(here::here("src", "06_descriptive-bivariate.R"))
+```
+
+------------------------------------------------------------------------
+
+# Question 1: Sunlight and Temperature {#q1}
+
+> **RQ1:** Do plants that require more sunlight also require higher temperatures?
+
+To address this question, we examine how `sunlight` requirements relate
+to `temperature_class` and to the numeric growing temperature range. We
+use mosaic-style cross-tabulations, grouped boxplots, and a
+non-parametric test (Kruskal-Wallis) to evaluate whether sunlight
+categories differ in their associated temperature distributions.
+
+```{r}
+#| label: 07_rq1-sunlight-temperature
+#| results: asis
+
+source(here::here("src", "07_rq1-sunlight-temperature.R"))
+```
+
+------------------------------------------------------------------------
+
+# Question 2: Cultivation Class and Water {#q2}
+
+> **RQ2:** What cultivation classes require the most water?
+
+Here we examine the distribution of `water` requirements across
+`cultivation` classes. We use stacked bar charts (proportional) and a
+contingency table with a chi-squared / Fisher's exact test to assess
+whether water requirements differ by cultivation group.
+
+```{r}
+#| label: 08_rq2-cultivation-water
+#| results: asis
+
+source(here::here("src", "08_rq2-cultivation-water.R"))
+```
+
+------------------------------------------------------------------------
+
+# Reproducibility Notes {#reproducibility}
+
+This document is designed to be fully reproducible:
+
+1.  Place `edible_plants.csv` in the `data/` folder (or let the script
+    download it automatically).
+2.  Open the project in Positron (or RStudio) so that `here::here()`
+    resolves paths correctly.
+3.  Packages install automatically via `pacman`.
+4.  Render: `quarto render scripts/analysis_script.qmd`
+
+Output files (`.html` tables and `.svg` plots) are saved in `results/`.
+The cleaned dataset is saved in `processed_data/`.
+
+All individual R scripts are stored in `src/` and sourced by this
+document.
+
+------------------------------------------------------------------------
+
+# Session Information {#session-info}
+
+```{r}
+#| label: xx_session
+
+sessioninfo::session_info(pkgs = "attached", include_base = TRUE)
+```
